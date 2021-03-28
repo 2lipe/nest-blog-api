@@ -8,11 +8,15 @@ export class AuthController {
 
   @Post()
   register(@Body(ValidationPipe) credentials: RegisterDTO) {
-    return this._authService.register(credentials);
+    const user = this._authService.register(credentials);
+
+    return user;
   }
 
   @Post('/login')
   login(@Body(ValidationPipe) credentials: LoginDTO) {
-    return this._authService.login(credentials);
+    const user = this._authService.login(credentials);
+
+    return user;
   }
 }
