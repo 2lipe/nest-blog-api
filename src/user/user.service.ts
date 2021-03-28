@@ -12,15 +12,17 @@ export class UserService {
     private _userRepository: Repository<UserEntity>,
   ) {}
 
-  async findByUsername(username: string): Promise<UserEntity> {
+  async findByUsername(username: string, user?: UserEntity): Promise<UserEntity> {
     try {
-      const user = await this._userRepository.findOne({ where: { username } });
+      const userFound = await (
+        await this._userRepository.findOne({ where: { username }, relations: ['followers'] })
+      ).toProfile(user);
 
-      if (!user) {
+      if (!userFound) {
         throw new NotFoundException();
       }
 
-      return user;
+      return userFound;
     } catch (error) {
       throw new NotFoundException();
     }
@@ -30,7 +32,9 @@ export class UserService {
     try {
       await this._userRepository.update({ username }, data);
 
-      return this.findByUsername(username);
+      const user = await this.findByUsername(username);
+
+      return { user };
     } catch (error) {
       throw new InternalServerErrorException();
     }
