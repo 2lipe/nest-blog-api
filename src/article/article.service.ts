@@ -7,10 +7,7 @@ import { Repository } from 'typeorm';
 
 @Injectable()
 export class ArticleService {
-  constructor(
-    @InjectRepository(ArticleEntity) private _articleRepository: Repository<ArticleEntity>,
-    @InjectRepository(UserEntity) private _userRepository: Repository<UserEntity>,
-  ) {}
+  constructor(@InjectRepository(ArticleEntity) private _articleRepository: Repository<ArticleEntity>) {}
 
   async findBySlug(slug: string) {
     try {
@@ -28,7 +25,9 @@ export class ArticleService {
 
       article.author = user;
 
-      await article.save();
+      const { slug } = await article.save();
+
+      return (await this._articleRepository.findOne({ slug })).toArticle(user);
     } catch (error) {
       throw new InternalServerErrorException();
     }
@@ -41,6 +40,8 @@ export class ArticleService {
       this.ensureOwnership(user, article);
 
       await this._articleRepository.update({ slug }, data);
+
+      return article.toArticle(user);
     } catch (error) {
       throw new InternalServerErrorException();
     }

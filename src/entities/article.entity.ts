@@ -1,4 +1,4 @@
-import { BeforeInsert, Column, Entity, JoinColumn, ManyToMany, ManyToOne, RelationCount } from 'typeorm';
+import { BeforeInsert, Column, Entity, JoinTable, ManyToMany, ManyToOne, RelationCount } from 'typeorm';
 import * as slugify from 'slug';
 
 import { AbstractEntity } from './abstract-entity';
@@ -20,7 +20,7 @@ export class ArticleEntity extends AbstractEntity {
   body: string;
 
   @ManyToMany(() => UserEntity, (user) => user.favorites, { eager: true })
-  @JoinColumn()
+  @JoinTable()
   favorites: UserEntity[];
 
   @RelationCount((article: ArticleEntity) => article.favorites)
@@ -41,7 +41,7 @@ export class ArticleEntity extends AbstractEntity {
     return classToPlain(this);
   }
 
-  toArticle(user: UserEntity) {
+  toArticle(user?: UserEntity) {
     let favorited = null;
 
     if (user) {
