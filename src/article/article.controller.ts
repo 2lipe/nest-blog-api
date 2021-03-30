@@ -15,7 +15,7 @@ import { CreateCommentBody, CreateCommentDTO } from 'src/models/dtos/comment.dto
 
 @Controller('articles')
 export class ArticleController {
-  constructor(private articleService: ArticleService, private commentService: CommentsService) {}
+  constructor(private _articleService: ArticleService, private _commentService: CommentsService) {}
 
   @ApiOkResponse({ description: 'List all articles' })
   @Get()
@@ -24,7 +24,7 @@ export class ArticleController {
     @User() user: UserEntity,
     @Query() query: IFindAllQuery,
   ): Promise<ResponseObject<'articles', IArticleResponse[]> & ResponseObject<'articlesCount', number>> {
-    const articles = await this.articleService.findAll(user, query);
+    const articles = await this._articleService.findAll(user, query);
 
     return {
       articles,
@@ -41,7 +41,7 @@ export class ArticleController {
     @User() user: UserEntity,
     @Query() query: IFindFeedQuery,
   ): Promise<ResponseObject<'articles', IArticleResponse[]> & ResponseObject<'articlesCount', number>> {
-    const articles = await this.articleService.findFeed(user, query);
+    const articles = await this._articleService.findFeed(user, query);
 
     return { articles, articlesCount: articles.length };
   }
@@ -53,7 +53,7 @@ export class ArticleController {
     @Param('slug') slug: string,
     @User() user: UserEntity,
   ): Promise<ResponseObject<'article', IArticleResponse>> {
-    const article = await this.articleService.findBySlug(slug);
+    const article = await this._articleService.findBySlug(slug);
 
     return { article: article.toArticle(user) };
   }
@@ -68,7 +68,7 @@ export class ArticleController {
     @User() user: UserEntity,
     @Body('article', ValidationPipe) data: CreateArticleDTO,
   ): Promise<ResponseObject<'article', IArticleResponse>> {
-    const article = await this.articleService.createArticle(user, data);
+    const article = await this._articleService.createArticle(user, data);
 
     return { article };
   }
@@ -84,7 +84,7 @@ export class ArticleController {
     @User() user: UserEntity,
     @Body('article', ValidationPipe) data: UpdateArticleDTO,
   ): Promise<ResponseObject<'article', IArticleResponse>> {
-    const article = await this.articleService.updateArticle(slug, user, data);
+    const article = await this._articleService.updateArticle(slug, user, data);
 
     return { article };
   }
@@ -98,7 +98,7 @@ export class ArticleController {
     @Param() slug: string,
     @User() user: UserEntity,
   ): Promise<ResponseObject<'article', IArticleResponse>> {
-    const article = await this.articleService.deleteArticle(slug, user);
+    const article = await this._articleService.deleteArticle(slug, user);
 
     return { article };
   }
@@ -106,7 +106,7 @@ export class ArticleController {
   @ApiOkResponse({ description: 'List article comments' })
   @Get('/:slug/comments')
   async findComments(@Param('slug') slug: string): Promise<ResponseObject<'comments', ICommentResponse[]>> {
-    const comments = await this.commentService.findByArticleSlug(slug);
+    const comments = await this._commentService.findByArticleSlug(slug);
 
     return { comments };
   }
@@ -120,7 +120,7 @@ export class ArticleController {
     @User() user: UserEntity,
     @Body('comment', ValidationPipe) data: CreateCommentDTO,
   ): Promise<ResponseObject<'comment', ICommentResponse>> {
-    const comment = await this.commentService.createComment(user, data);
+    const comment = await this._commentService.createComment(user, data);
 
     return { comment };
   }
@@ -133,7 +133,7 @@ export class ArticleController {
     @User() user: UserEntity,
     @Param('id') id: number,
   ): Promise<ResponseObject<'comment', ICommentResponse>> {
-    const comment = await this.commentService.deleteComment(user, id);
+    const comment = await this._commentService.deleteComment(user, id);
 
     return { comment };
   }
@@ -147,7 +147,7 @@ export class ArticleController {
     @Param('slug') slug: string,
     @User() user: UserEntity,
   ): Promise<ResponseObject<'article', IArticleResponse>> {
-    const article = await this.articleService.favoriteArticle(slug, user);
+    const article = await this._articleService.favoriteArticle(slug, user);
 
     return { article };
   }
@@ -161,7 +161,7 @@ export class ArticleController {
     @Param('slug') slug: string,
     @User() user: UserEntity,
   ): Promise<ResponseObject<'article', IArticleResponse>> {
-    const article = await this.articleService.unfavoriteArticle(slug, user);
+    const article = await this._articleService.unfavoriteArticle(slug, user);
 
     return { article };
   }

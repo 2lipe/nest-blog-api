@@ -1,14 +1,15 @@
 import { IProfileResponse } from './profile';
 
-export interface IFindAllQuery {
+export interface IFindFeedQuery {
   limit?: number;
   offset?: number;
+}
+
+export interface IFindAllQuery extends IFindFeedQuery {
   author?: string;
   favorited?: string;
   tag?: string;
 }
-
-export type IFindFeedQuery = IFindAllQuery;
 
 export interface IArticleResponse {
   slug: string;
