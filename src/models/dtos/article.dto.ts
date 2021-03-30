@@ -1,35 +1,52 @@
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsArray, IsOptional } from 'class-validator';
 
 export class CreateArticleDTO {
   @IsString()
+  @ApiProperty()
   title: string;
 
   @IsString()
+  @ApiProperty()
   body: string;
 
   @IsString()
+  @ApiProperty()
   description: string;
 
   @IsArray()
-  @IsString({ each: true })
+  @ApiProperty()
   tagList: string[];
+}
+
+export class CreateArticleBody {
+  @ApiProperty()
+  article: CreateArticleDTO;
 }
 
 export class UpdateArticleDTO {
   @IsString()
   @IsOptional()
-  title?: string;
+  @ApiProperty()
+  title: string;
 
   @IsString()
   @IsOptional()
-  body?: string;
+  @ApiProperty()
+  body: string;
 
   @IsString()
   @IsOptional()
-  description?: string;
+  @ApiProperty()
+  description: string;
 
-  @IsString()
-  @IsString({ each: true })
+  @IsArray()
   @IsOptional()
-  tagList?: string[];
+  @ApiProperty()
+  tagList: string[];
+}
+
+export class UpdateArticleBody {
+  @ApiProperty()
+  article: UpdateArticleDTO;
 }

@@ -2,7 +2,6 @@ import { Injectable, InternalServerErrorException, NotFoundException } from '@ne
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/entities/user.entity';
 import { UpdateUserDTO } from 'src/models/dtos/user.dto';
-import { ProfileViewModel } from 'src/models/view-models/profile.view-model';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -40,7 +39,7 @@ export class UserService {
     }
   }
 
-  async followUser(currentUser: UserEntity, username: string): Promise<ProfileViewModel> {
+  async followUser(currentUser: UserEntity, username: string) {
     try {
       const user = await this._userRepository.findOne({
         where: { username },
@@ -57,7 +56,7 @@ export class UserService {
     }
   }
 
-  async unfollowUser(currentUser: UserEntity, username: string): Promise<ProfileViewModel> {
+  async unfollowUser(currentUser: UserEntity, username: string) {
     try {
       const user = await this._userRepository.findOne({
         where: { username },

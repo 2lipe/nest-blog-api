@@ -1,21 +1,26 @@
 import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Like } from 'typeorm';
+
 import { ArticleEntity } from 'src/entities/article.entity';
 import { UserEntity } from 'src/entities/user.entity';
+import { TagEntity } from 'src/entities/tag.entity';
+import { IArticleResponse, IFindAllQuery, IFindFeedQuery } from 'src/models/interfaces/article';
 import { CreateArticleDTO, UpdateArticleDTO } from 'src/models/dtos/article.dto';
-import { IFindAllQuery, IFindFeedQuery } from 'src/models/interfaces/article';
-import { Like, Repository } from 'typeorm';
 
 @Injectable()
 export class ArticleService {
   constructor(
-    @InjectRepository(ArticleEntity) private _articleRepository: Repository<ArticleEntity>,
+    @InjectRepository(ArticleEntity)
+    private _articleRepository: Repository<ArticleEntity>,
     @InjectRepository(UserEntity) private _userRepository: Repository<UserEntity>,
+    @InjectRepository(TagEntity) private _tagRepository: Repository<TagEntity>,
   ) {}
 
-  async findAll(user: UserEntity, query: IFindAllQuery) {
+  async findAll(user: UserEntity, query: IFindAllQuery): Promise<IArticleResponse[]> {
     try {
-      const findOptions: any = {
+      // eslint-disable-next-line prefer-const
+      let findOptions: any = {
         where: {},
       };
 
@@ -24,7 +29,7 @@ export class ArticleService {
       }
 
       if (query.favorited) {
-        findOptions.where['favorites.username'] = query.favorited;
+        findOptions.where['favoritedBy.username'] = query.favorited;
       }
 
       if (query.tag) {
@@ -39,43 +44,43 @@ export class ArticleService {
         findOptions.limit = query.limit;
       }
 
-      const articles = (await this._articleRepository.find(findOptions)).map((article) => article.toArticle(user));
-
-      return articles;
+      return (await this._articleRepository.find(findOptions)).map((article) => article.toArticle(user));
     } catch (error) {
       throw new InternalServerErrorException();
     }
   }
 
-  async findFeed(user: UserEntity, query: IFindFeedQuery) {
+  async findFeed(user: UserEntity, query: IFindFeedQuery): Promise<IArticleResponse[]> {
     try {
-      const { following } = await this._userRepository.findOne({ where: { id: user.id }, relations: ['following'] });
+      const { followee } = await this._userRepository.findOne({
+        where: { id: user.id },
+        relations: ['followee'],
+      });
 
-      const findOptions = { ...query, where: following.map((follow) => ({ author: follow.id })) };
+      const findOptions = {
+        ...query,
+        where: followee.map((follow) => ({ author: follow.id })),
+      };
 
-      const articles = (await this._articleRepository.find(findOptions)).map((article) => article.toArticle(user));
-
-      return articles;
+      return (await this._articleRepository.find(findOptions)).map((article) => article.toArticle(user));
     } catch (error) {
       throw new InternalServerErrorException();
     }
   }
 
-  async findBySlug(slug: string) {
-    try {
-      const article = await this._articleRepository.findOne({ where: { slug } });
-
-      return article;
-    } catch (error) {
-      throw new InternalServerErrorException();
-    }
+  findBySlug(slug: string): Promise<ArticleEntity> {
+    return this._articleRepository.findOne({
+      where: { slug },
+    });
   }
 
-  async createArticle(user: UserEntity, data: CreateArticleDTO) {
+  async createArticle(user: UserEntity, data: CreateArticleDTO): Promise<IArticleResponse> {
     try {
       const article = this._articleRepository.create(data);
 
       article.author = user;
+
+      await this.upsertTags(data.tagList);
 
       const { slug } = await article.save();
 
@@ -85,11 +90,13 @@ export class ArticleService {
     }
   }
 
-  async updateArticle(slug: string, user: UserEntity, data: UpdateArticleDTO) {
+  async updateArticle(slug: string, user: UserEntity, data: UpdateArticleDTO): Promise<IArticleResponse> {
     try {
       const article = await this.findBySlug(slug);
 
-      this.ensureOwnership(user, article);
+      if (!this.ensureOwnership(user, article)) {
+        throw new UnauthorizedException();
+      }
 
       await this._articleRepository.update({ slug }, data);
 
@@ -99,27 +106,27 @@ export class ArticleService {
     }
   }
 
-  async deleteArticle(slug: string, user: UserEntity) {
+  async deleteArticle(slug: string, user: UserEntity): Promise<IArticleResponse> {
     try {
       const article = await this.findBySlug(slug);
 
-      const noOwner = !this.ensureOwnership(user, article);
-
-      if (noOwner) {
-        return new UnauthorizedException();
+      if (!this.ensureOwnership(user, article)) {
+        throw new UnauthorizedException();
       }
 
       await this._articleRepository.remove(article);
+
+      return article.toArticle(user);
     } catch (error) {
       throw new InternalServerErrorException();
     }
   }
 
-  async favoriteArticle(slug: string, user: UserEntity) {
+  async favoriteArticle(slug: string, user: UserEntity): Promise<IArticleResponse> {
     try {
       const article = await this.findBySlug(slug);
 
-      article.favorites.push(user);
+      article.favoritedBy.push(user);
 
       await article.save();
 
@@ -129,21 +136,35 @@ export class ArticleService {
     }
   }
 
-  async unfavoriteArticle(slug: string, user: UserEntity) {
+  async unfavoriteArticle(slug: string, user: UserEntity): Promise<IArticleResponse> {
     try {
       const article = await this.findBySlug(slug);
 
-      article.favorites = article.favorites.filter((fav) => fav.id !== user.id);
+      article.favoritedBy = article.favoritedBy.filter((fav) => fav.id !== user.id);
 
       await article.save();
 
-      return (await article.toArticle(user)).toArticle(user);
+      return (await this.findBySlug(slug)).toArticle(user);
     } catch (error) {
       throw new InternalServerErrorException();
     }
   }
 
-  private ensureOwnership(user: UserEntity, article: ArticleEntity) {
+  private async upsertTags(tagList: string[]): Promise<void> {
+    try {
+      const foundTags = await this._tagRepository.find({
+        where: tagList.map((t) => ({ tag: t })),
+      });
+
+      const newTags = tagList.filter((t) => !foundTags.map((t) => t.tag).includes(t));
+
+      await Promise.all(this._tagRepository.create(newTags.map((t) => ({ tag: t }))).map((t) => t.save()));
+    } catch (error) {
+      throw new InternalServerErrorException();
+    }
+  }
+
+  private ensureOwnership(user: UserEntity, article: ArticleEntity): boolean {
     return article.author.id === user.id;
   }
 }

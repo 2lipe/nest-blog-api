@@ -1,13 +1,16 @@
-import { classToPlain, Exclude } from 'class-transformer';
-import { IsEmail } from 'class-validator';
+import { Entity, Column, BeforeInsert, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import { BeforeInsert, Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany } from 'typeorm';
+import { Exclude, classToPlain } from 'class-transformer';
+import { IsEmail } from 'class-validator';
+
 import { AbstractEntity } from './abstract-entity';
 import { ArticleEntity } from './article.entity';
+import { CommentEntity } from './comments.entity';
+import { IUserResponse } from 'src/models/interfaces/user';
 
 @Entity('users')
 export class UserEntity extends AbstractEntity {
-  @Column({ unique: true })
+  @Column()
   @IsEmail()
   email: string;
 
@@ -24,33 +27,33 @@ export class UserEntity extends AbstractEntity {
   @Exclude()
   password: string;
 
-  @ManyToMany(() => UserEntity, (user) => user.following)
+  @ManyToMany(() => UserEntity, (user) => user.followee)
   @JoinTable()
   followers: UserEntity[];
 
   @ManyToMany(() => UserEntity, (user) => user.followers)
-  following: UserEntity[];
+  followee: UserEntity[];
 
   @OneToMany(() => ArticleEntity, (article) => article.author)
   articles: ArticleEntity[];
 
-  @ManyToMany(() => ArticleEntity, (article) => article.favorites)
-  @JoinColumn()
+  @OneToMany(() => CommentEntity, (comment) => comment.author)
+  comments: CommentEntity[];
+
+  @ManyToMany(() => ArticleEntity, (article) => article.favoritedBy)
   favorites: ArticleEntity[];
 
   @BeforeInsert()
   async hashPassword() {
-    const salt = 10;
-
-    this.password = await bcrypt.hash(this.password, salt);
+    this.password = await bcrypt.hash(this.password, 10);
   }
 
-  async comparePassword(password: string) {
-    return await bcrypt.compare(password, this.password);
+  async comparePassword(attempt: string) {
+    return await bcrypt.compare(attempt, this.password);
   }
 
-  toJSON() {
-    return classToPlain(this);
+  toJSON(): IUserResponse {
+    return <IUserResponse>classToPlain(this);
   }
 
   toProfile(user?: UserEntity) {

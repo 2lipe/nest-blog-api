@@ -1,9 +1,11 @@
-import { BeforeInsert, Column, Entity, JoinTable, ManyToMany, ManyToOne, RelationCount } from 'typeorm';
-import * as slugify from 'slug';
+import { Entity, Column, BeforeInsert, ManyToOne, ManyToMany, RelationCount, JoinTable, OneToMany } from 'typeorm';
+import { classToPlain } from 'class-transformer';
+import slugify from 'slug';
 
 import { AbstractEntity } from './abstract-entity';
 import { UserEntity } from './user.entity';
-import { classToPlain } from 'class-transformer';
+import { CommentEntity } from './comments.entity';
+import { IArticleResponse } from 'src/models/interfaces/article';
 
 @Entity('articles')
 export class ArticleEntity extends AbstractEntity {
@@ -21,10 +23,13 @@ export class ArticleEntity extends AbstractEntity {
 
   @ManyToMany(() => UserEntity, (user) => user.favorites, { eager: true })
   @JoinTable()
-  favorites: UserEntity[];
+  favoritedBy: UserEntity[];
 
-  @RelationCount((article: ArticleEntity) => article.favorites)
+  @RelationCount((article: ArticleEntity) => article.favoritedBy)
   favoritesCount: number;
+
+  @OneToMany(() => CommentEntity, (comment) => comment.article)
+  comments: CommentEntity[];
 
   @ManyToOne(() => UserEntity, (user) => user.articles, { eager: true })
   author: UserEntity;
@@ -41,16 +46,16 @@ export class ArticleEntity extends AbstractEntity {
     return classToPlain(this);
   }
 
-  toArticle(user?: UserEntity) {
+  toArticle(user?: UserEntity): IArticleResponse {
     let favorited = null;
 
     if (user) {
-      favorited = this.favorites.map((user) => user.id).includes(user.id);
+      favorited = this.favoritedBy.map((user) => user.id).includes(user.id);
     }
 
     const article: any = this.toJSON();
 
-    delete article.favorites;
+    delete article.favoritedBy;
 
     return { ...article, favorited };
   }
